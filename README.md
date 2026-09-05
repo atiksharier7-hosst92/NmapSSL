@@ -14,8 +14,8 @@
 
 ### ⚡ Nmap-powered SSL/TLS Recon & Vulnerability Scanner ⚡
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Nmap](https://img.shields.io/badge/Powered%20by-Nmap-red?logo=nmap&logoColor=white)](https://nmap.org/)
+[![ATIK SHARIER REDOY](https://img.shields.io/badge/Powered%20by-ATIK-red?logo=nmap&logoColor=white)](https://nmap.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Made with ❤](https://img.shields.io/badge/Made%20with-%E2%9D%A4-red)]()
