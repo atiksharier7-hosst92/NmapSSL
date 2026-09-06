@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NmapSSL — Nmap-powered SSL/TLS recon</title>
+<style>
+  :root{
+    --bg:        #0a0e0d;
+    --panel:     #101512;
+    --panel-2:   #141a17;
+    --line:      #223027;
+    --text:      #dbe6df;
+    --muted:     #7c8f85;
+    --accent:    #4fd1ae;
+    --danger:    #e5626a;
+    --amber:     #e0b45c;
+    --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(79,209,174,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,209,174,0.028) 1px, transparent 1px);
+    background-size:36px 36px;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  a{color:inherit;}
+
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px; position:relative; z-index:1;}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky; top:0; z-index:10;
+    background:rgba(10,14,13,0.86);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  nav .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px;
+  }
+  .brand{
+    font-family:var(--mono);
+    font-size:15px;
+    letter-spacing:0.02em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent); box-shadow:0 0 8px var(--accent);}
+  nav ul{list-style:none; display:flex; gap:28px; margin:0; padding:0; font-size:14px;}
+  nav a{text-decoration:none; color:var(--muted); transition:color .15s;}
+  nav a:hover{color:var(--text);}
+  .nav-cta{
+    font-family:var(--mono); font-size:13px; color:var(--bg) !important;
+    background:var(--accent); padding:7px 14px; border-radius:3px;
+    text-decoration:none; font-weight:600;
+  }
+
+  /* ---------- hero ---------- */
+  header.hero{padding:88px 0 64px;}
+  .hero-grid{
+    display:grid; grid-template-columns:1.05fr 1fr; gap:56px; align-items:center;
+  }
+  .eyebrow{
+    font-family:var(--mono); font-size:13px; color:var(--accent); margin:0 0 18px;
+  }
+  h1{
+    font-size:44px; line-height:1.12; margin:0 0 20px; font-weight:700; letter-spacing:-0.01em;
+  }
+  h1 .hl{color:var(--accent);}
+  .lede{color:var(--muted); font-size:17px; max-width:46ch; margin:0 0 32px;}
+  .cta-row{display:flex; gap:14px; flex-wrap:wrap;}
+  .btn{
+    font-family:var(--mono); font-size:14px; padding:12px 20px; border-radius:4px;
+    text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    border:1px solid transparent;
+  }
+  .btn-primary{background:var(--accent); color:#06110d; font-weight:700;}
+  .btn-ghost{border-color:var(--line); color:var(--text);}
+  .btn-ghost:hover{border-color:var(--accent);}
+
+  /* terminal card */
+  .term{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 20px 60px -30px rgba(0,0,0,0.7);
+  }
+  .term-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:11px 14px; background:var(--panel-2); border-bottom:1px solid var(--line);
+  }
+  .term-bar span{width:10px;height:10px;border-radius:50%; display:inline-block;}
+  .term-bar .r{background:#e5626a;} .term-bar .y{background:#e0b45c;} .term-bar .g{background:#4fd1ae;}
+  .term-title{font-family:var(--mono); font-size:12px; color:var(--muted); margin-left:6px;}
+  .term-body{
+    font-family:var(--mono); font-size:13.5px; padding:20px; min-height:250px;
+    color:#c4d3cb; white-space:pre-wrap;
+  }
+  .term-body .prompt{color:var(--accent);}
+  .term-body .ok{color:var(--accent);}
+  .term-body .warn{color:var(--danger);}
+  .term-body .dim{color:var(--muted);}
+  .caret{display:inline-block; width:7px; height:15px; background:var(--accent); vertical-align:middle; animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+
+  /* ---------- sections ---------- */
+  section{padding:64px 0; border-top:1px solid var(--line);}
+  .section-head{max-width:56ch; margin-bottom:40px;}
+  .kicker{font-family:var(--mono); font-size:13px; color:var(--accent); margin:0 0 10px;}
+  h2{font-size:28px; margin:0 0 12px; letter-spacing:-0.01em;}
+  .section-head p{color:var(--muted); margin:0;}
+
+  /* features */
+  .feat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line);}
+  .feat{background:var(--bg); padding:26px 22px;}
+  .feat .tag{font-family:var(--mono); font-size:12px; color:var(--muted); margin:0 0 12px; display:block;}
+  .feat h3{font-size:16px; margin:0 0 8px;}
+  .feat p{font-size:14px; color:var(--muted); margin:0;}
+
+  /* install */
+  .install-steps{display:flex; flex-direction:column; gap:0;}
+  .step{
+    display:grid; grid-template-columns:32px 1fr; gap:18px;
+    padding:20px 0; border-bottom:1px solid var(--line);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-idx{font-family:var(--mono); color:var(--accent); font-size:14px; padding-top:2px;}
+  .step h4{margin:0 0 8px; font-size:15px;}
+  pre.code{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    padding:14px 16px; font-family:var(--mono); font-size:13px; color:#c4d3cb;
+    overflow-x:auto; margin:0;
+  }
+  pre.code .c{color:var(--muted);}
+
+  /* table */
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--line);}
+  th{font-family:var(--mono); color:var(--muted); font-weight:500; font-size:12.5px;}
+  td code{font-family:var(--mono); font-size:12.5px; background:var(--panel-2); padding:2px 6px; border-radius:3px; color:var(--accent);}
+
+  /* disclaimer */
+  .callout{
+    border-left:3px solid var(--amber);
+    background:linear-gradient(90deg, rgba(224,180,92,0.07), transparent);
+    padding:18px 22px; border-radius:0 6px 6px 0;
+  }
+  .callout p{margin:0; color:#cdbf9c; font-size:14px;}
+  .callout strong{color:var(--amber);}
+
+  /* ---------- login section ---------- */
+  .login-wrap{display:flex; justify-content:center;}
+  .card{
+    width:100%; max-width:400px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 30px 80px -30px rgba(0,0,0,0.8);
+    overflow:hidden;
+  }
+  .card-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:12px 16px; background:var(--panel-2); border-bottom:1px solid var(--line);
+  }
+  .card-bar span{width:10px;height:10px;border-radius:50%; display:inline-block;}
+  .card-bar .r{background:#e5626a;} .card-bar .y{background:#e0b45c;} .card-bar .g{background:#4fd1ae;}
+  .card-bar .title{font-family:var(--mono); font-size:12px; color:var(--muted); margin-left:6px;}
+  .card-body{padding:34px 32px 32px;}
+  .login-kicker{font-family:var(--mono); font-size:12.5px; color:var(--accent); margin:0 0 10px;}
+  .card-body h3.login-title{font-size:23px; margin:0 0 8px; letter-spacing:-0.01em;}
+  .card-body .sub{color:var(--muted); font-size:14px; margin:0 0 28px;}
+  label{display:block; font-family:var(--mono); font-size:12.5px; color:var(--muted); margin:0 0 7px;}
+  .field{margin-bottom:18px;}
+  .input-wrap{position:relative;}
+  input[type="text"], input[type="password"], input[type="email"]{
+    width:100%; padding:11px 13px; border-radius:6px;
+    background:var(--bg); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:14px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,209,174,0.12);}
+  input::placeholder{color:#4a5750;}
+  .toggle-pass{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--muted); font-family:var(--mono);
+    font-size:11.5px; cursor:pointer; padding:4px 6px;
+  }
+  .toggle-pass:hover{color:var(--accent);}
+  .row-between{display:flex; align-items:center; justify-content:space-between; margin:-4px 0 22px;}
+  .remember{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted);}
+  .remember input{accent-color:var(--accent);}
+  .forgot{font-size:13px; color:var(--accent); text-decoration:none;}
+  .forgot:hover{text-decoration:underline;}
+  .btn-submit{
+    width:100%; padding:12px; border-radius:6px; border:none;
+    background:var(--accent); color:#06110d; font-weight:700;
+    font-family:var(--mono); font-size:14px; cursor:pointer;
+    transition:filter .15s;
+  }
+  .btn-submit:hover{filter:brightness(1.08);}
+  .btn-submit:active{filter:brightness(0.95);}
+  .error{
+    display:none;
+    font-family:var(--mono); font-size:12.5px; color:var(--danger);
+    background:rgba(229,98,106,0.08); border:1px solid rgba(229,98,106,0.3);
+    padding:9px 12px; border-radius:6px; margin-bottom:18px;
+  }
+  .error.show{display:block;}
+  .login-divider{
+    display:flex; align-items:center; gap:12px; margin:24px 0;
+    color:var(--muted); font-size:12px; font-family:var(--mono);
+  }
+  .login-divider::before, .login-divider::after{content:""; flex:1; height:1px; background:var(--line);}
+  .footer-line{text-align:center; font-size:13.5px; color:var(--muted); margin:0;}
+  .footer-line a{color:var(--accent); text-decoration:none;}
+  .footer-line a:hover{text-decoration:underline;}
+
+  footer{
+    border-top:1px solid var(--line); padding:32px 0; margin-top:12px;
+  }
+  footer .wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;}
+  footer p{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin:0;}
+  footer a{color:var(--muted); text-decoration:none; font-size:13px;}
+  footer a:hover{color:var(--accent);}
+
+  @media (max-width:840px){
+    .hero-grid{grid-template-columns:1fr;}
+    .feat-grid{grid-template-columns:1fr;}
+    nav ul{display:none;}
+    h1{font-size:34px;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span>NmapSSL</div>
+    <ul>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#usage">Usage</a></li>
+      <li><a href="#login">Login</a></li>
+    </ul>
+    <a class="nav-cta" href="https://github.com/atiksharier7-hosst92/NmapSSL">GitHub ↗</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">nmap + ssl/tls recon, one command</p>
+      <h1>Find the open port.<br>Then find <span class="hl">what's wrong</span> with it.</h1>
+      <p class="lede">NmapSSL pairs Nmap's port discovery with certificate and cipher-suite analysis, so you go from "what's listening" to "what's exposed" in a single scan.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#install">Get started</a>
+        <a class="btn btn-ghost" href="https://github.com/atiksharier7-hosst92/NmapSSL">View source</a>
+      </div>
+    </div>
+
+    <div class="term">
+      <div class="term-bar">
+        <span class="r"></span><span class="y"></span><span class="g"></span>
+        <span class="term-title">~/NmapSSL</span>
+      </div>
+      <div class="term-body" id="termBody"></div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">what it does</p>
+      <h2>Recon and TLS inspection, without switching tools</h2>
+      <p>Point it at a target, get back the ports, the certificates, and the weak spots — in one pass.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <span class="tag">01 · discovery</span>
+        <h3>Port & service scan</h3>
+        <p>Runs Nmap under the hood to find open ports and identify which ones are serving SSL/TLS.</p>
+      </div>
+      <div class="feat">
+        <span class="tag">02 · certificates</span>
+        <h3>Certificate inspection</h3>
+        <p>Pulls issuer, subject, validity window, and expiry so you can spot stale or misissued certs fast.</p>
+      </div>
+      <div class="feat">
+        <span class="tag">03 · protocols</span>
+        <h3>Protocol & cipher check</h3>
+        <p>Lists supported TLS versions and cipher suites, flagging outdated or weak configurations.</p>
+      </div>
+      <div class="feat">
+        <span class="tag">04 · triage</span>
+        <h3>Color-coded findings</h3>
+        <p>Terminal output separates informational results from actual warnings, so nothing gets buried.</p>
+      </div>
+      <div class="feat">
+        <span class="tag">05 · reporting</span>
+        <h3>Exportable results</h3>
+        <p>Save scans as JSON or plain text to drop straight into a report or a follow-up ticket.</p>
+      </div>
+      <div class="feat">
+        <span class="tag">06 · scope</span>
+        <h3>Single host or range</h3>
+        <p>Works against one host and port, or a defined range, from the same command.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">setup</p>
+      <h2>Installation</h2>
+      <p>Needs Python 3.8+, Nmap on your PATH, and OpenSSL.</p>
+    </div>
+    <div class="install-steps">
+      <div class="step">
+        <div class="step-idx">1</div>
+        <div>
+          <h4>Clone the repository</h4>
+          <pre class="code"><span class="c"># </span>git clone https://github.com/atiksharier7-hosst92/NmapSSL.git
+cd NmapSSL</pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-idx">2</div>
+        <div>
+          <h4>Install dependencies</h4>
+          <pre class="code"><span class="c"># </span>pip install -r requirements.txt</pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-idx">3</div>
+        <div>
+          <h4>Confirm Nmap is available</h4>
+          <pre class="code"><span class="c"># </span>nmap --version</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="usage">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">running a scan</p>
+      <h2>Usage</h2>
+      <p>Point it at a target and a port, or leave the port off to default to 443.</p>
+    </div>
+    <pre class="code" style="margin-bottom:28px;"><span class="c"># </span>python nmapssl.py -t example.com -p 443</pre>
+
+    <table>
+      <thead>
+        <tr><th>Flag</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>-t, --target</code></td><td>Target IP address or domain</td></tr>
+        <tr><td><code>-p, --port</code></td><td>Port or port range to scan (default: 443)</td></tr>
+        <tr><td><code>-o, --output</code></td><td>Save results to a file</td></tr>
+        <tr><td><code>-v, --verbose</code></td><td>Show detailed scan output</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="login">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">your account</p>
+      <h2>Sign in</h2>
+      <p>Access your scan history and saved targets.</p>
+    </div>
+
+    <div class="login-wrap">
+      <div class="card">
+        <div class="card-bar">
+          <span class="r"></span><span class="y"></span><span class="g"></span>
+          <span class="title">~/auth/login</span>
+        </div>
+
+        <div class="card-body">
+
+          <!-- Signed-out view -->
+          <div id="authForms">
+            <p class="login-kicker" id="formKicker">welcome back</p>
+            <h3 class="login-title" id="formTitle">Sign in to your account</h3>
+            <p class="sub" id="formSub">Access your scan history and saved targets.</p>
+
+            <div class="error" id="errorBox"></div>
+
+            <form id="loginForm">
+              <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@example.com" required>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <div class="input-wrap">
+                  <input type="password" id="password" placeholder="••••••••" required minlength="6">
+                  <button type="button" class="toggle-pass" id="togglePass">SHOW</button>
+                </div>
+              </div>
+
+              <div class="row-between" id="rememberRow">
+                <label class="remember">
+                  <input type="checkbox" id="remember">
+                  Remember me
+                </label>
+                <a class="forgot" href="#" id="forgotLink">Forgot password?</a>
+              </div>
+
+              <button type="submit" class="btn-submit" id="submitBtn">Sign in →</button>
+            </form>
+
+            <div class="login-divider">or</div>
+
+            <p class="footer-line" id="toggleModeLine">Don't have an account? <a href="#" id="toggleModeLink">Create one</a></p>
+          </div>
+
+          <!-- Signed-in view -->
+          <div id="authSignedIn" style="display:none;">
+            <p class="login-kicker">signed in</p>
+            <h3 class="login-title">Welcome 👋</h3>
+            <p class="sub" id="signedInEmail" style="word-break:break-all;"></p>
+            <button type="button" class="btn-submit" id="logoutBtn">Sign out</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="callout">
+      <p><strong>Use responsibly.</strong> NmapSSL is built for education and authorized security testing. Only scan systems you own or have explicit permission to test.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>NmapSSL — MIT Licensed</p>
+    <a href="https://github.com/atiksharier7-hosst92/NmapSSL">github.com/atiksharier7-hosst92/NmapSSL ↗</a>
+  </div>
+</footer>
+
+<!-- Firebase SDK (Authentication) -->
+<script type="module" src="firebase-auth.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
