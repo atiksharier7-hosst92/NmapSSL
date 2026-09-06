@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NmapSSL — Sign in</title>
+<style>
+  :root{
+    --bg:        #0a0e0d;
+    --panel:     #101512;
+    --panel-2:   #141a17;
+    --line:      #223027;
+    --text:      #dbe6df;
+    --muted:     #7c8f85;
+    --accent:    #4fd1ae;
+    --danger:    #e5626a;
+    --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(79,209,174,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,209,174,0.03) 1px, transparent 1px);
+    background-size:36px 36px;
+    pointer-events:none;
+  }
+
+  .brand{
+    position:fixed; top:28px; left:28px;
+    font-family:var(--mono); font-size:14px;
+    display:flex; align-items:center; gap:8px; color:var(--text);
+    text-decoration:none; z-index:2;
+  }
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent); box-shadow:0 0 8px var(--accent);}
+
+  .card{
+    position:relative; z-index:1;
+    width:100%; max-width:400px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 30px 80px -30px rgba(0,0,0,0.8);
+    overflow:hidden;
+  }
+
+  .card-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:12px 16px; background:var(--panel-2); border-bottom:1px solid var(--line);
+  }
+  .card-bar span{width:10px;height:10px;border-radius:50%; display:inline-block;}
+  .card-bar .r{background:#e5626a;} .card-bar .y{background:#e0b45c;} .card-bar .g{background:#4fd1ae;}
+  .card-bar .title{font-family:var(--mono); font-size:12px; color:var(--muted); margin-left:6px;}
+
+  .card-body{padding:34px 32px 32px;}
+
+  .kicker{font-family:var(--mono); font-size:12.5px; color:var(--accent); margin:0 0 10px;}
+  h1{font-size:23px; margin:0 0 8px; letter-spacing:-0.01em;}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 28px;}
+
+  label{
+    display:block; font-family:var(--mono); font-size:12.5px; color:var(--muted);
+    margin:0 0 7px;
+  }
+  .field{margin-bottom:18px;}
+  .input-wrap{position:relative;}
+  input[type="text"], input[type="password"], input[type="email"]{
+    width:100%; padding:11px 13px; border-radius:6px;
+    background:var(--bg); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:14px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,209,174,0.12);}
+  input::placeholder{color:#4a5750;}
+
+  .toggle-pass{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--muted); font-family:var(--mono);
+    font-size:11.5px; cursor:pointer; padding:4px 6px;
+  }
+  .toggle-pass:hover{color:var(--accent);}
+
+  .row-between{display:flex; align-items:center; justify-content:space-between; margin:-4px 0 22px;}
+  .remember{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted);}
+  .remember input{accent-color:var(--accent);}
+  .forgot{font-size:13px; color:var(--accent); text-decoration:none;}
+  .forgot:hover{text-decoration:underline;}
+
+  .btn-submit{
+    width:100%; padding:12px; border-radius:6px; border:none;
+    background:var(--accent); color:#06110d; font-weight:700;
+    font-family:var(--mono); font-size:14px; cursor:pointer;
+    transition:filter .15s;
+  }
+  .btn-submit:hover{filter:brightness(1.08);}
+  .btn-submit:active{filter:brightness(0.95);}
+
+  .error{
+    display:none;
+    font-family:var(--mono); font-size:12.5px; color:var(--danger);
+    background:rgba(229,98,106,0.08); border:1px solid rgba(229,98,106,0.3);
+    padding:9px 12px; border-radius:6px; margin-bottom:18px;
+  }
+  .error.show{display:block;}
+
+  .divider{
+    display:flex; align-items:center; gap:12px; margin:24px 0;
+    color:var(--muted); font-size:12px; font-family:var(--mono);
+  }
+  .divider::before, .divider::after{content:""; flex:1; height:1px; background:var(--line);}
+
+  .footer-line{
+    text-align:center; font-size:13.5px; color:var(--muted); margin:0;
+  }
+  .footer-line a{color:var(--accent); text-decoration:none;}
+  .footer-line a:hover{text-decoration:underline;}
+
+  .note{
+    position:fixed; bottom:22px; left:0; right:0; text-align:center;
+    font-family:var(--mono); font-size:11.5px; color:var(--muted); z-index:2;
+  }
+</style>
+</head>
+<body>
+
+<a class="brand" href="https://github.com/atiksharier7-hosst92/NmapSSL" target="_blank" rel="noopener"><span class="dot"></span>NmapSSL</a>
+
+<div class="card">
+  <div class="card-bar">
+    <span class="r"></span><span class="y"></span><span class="g"></span>
+    <span class="title">~/auth/login</span>
+  </div>
+
+  <div class="card-body">
+    <p class="kicker">Welcome back Linux</p>
+    <h1>Sign in to your account Linux</h1>
+    <p class="sub">Access your scan targets.</p>
+
+    <div class="error" id="errorBox">Invalid email or password.</div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <input type="password" id="password" placeholder="••••••••" required>
+          <button type="button" class="toggle-pass" id="togglePass">SHOW</button>
+        </div>
+      </div>
+
+      <div class="row-between">
+        <label class="remember">
+          <input type="checkbox" id="remember">
+          Remember me
+        </label>
+        <a class="forgot" href="#">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn-submit">Sign in →</button>
+    </form>
+
+    <div class="divider">or</div>
+
+    <p class="footer-line">Don't have an account? <a href="#">Create one</a></p>
+  </div>
+</div>
+
+<p class="note">{ Sharier Redoy } This is a static front-end demo — no data leaves your browser. · <a href="https://github.com/atiksharier7-hosst92/NmapSSL" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none;">View on GitHub ↗</a></p>
+
+<script>
+  const form = document.getElementById('loginForm');
+  const errorBox = document.getElementById('errorBox');
+  const toggleBtn = document.getElementById('togglePass');
+  const passInput = document.getElementById('password');
+
+  toggleBtn.addEventListener('click', () => {
+    const isPassword = passInput.type === 'password';
+    passInput.type = isPassword ? 'text' : 'password';
+    toggleBtn.textContent = isPassword ? 'HIDE' : 'SHOW';
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    // Demo only: no real authentication happens here.
+    // Wire this up to your backend's auth endpoint.
+    errorBox.classList.remove('show');
+    const email = document.getElementById('email').value.trim();
+    const password = passInput.value;
+
+    if(!email || !password){
+      errorBox.textContent = 'Please fill in both fields.';
+      errorBox.classList.add('show');
+      return;
+    }
+
+    // Placeholder success behaviour
+    errorBox.textContent = 'Login form captured — connect this to your backend to authenticate.';
+    errorBox.style.color = 'var(--accent)';
+    errorBox.style.background = 'rgba(79,209,174,0.08)';
+    errorBox.style.borderColor = 'rgba(79,209,174,0.3)';
+    errorBox.classList.add('show');
+  });
+</script>
+
+</body>
+</html>
