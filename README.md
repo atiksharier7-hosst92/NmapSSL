@@ -18,10 +18,3 @@ _<p align="center">Your open-source personal AI assistant.</p>_
   I share Leon progress most regularly on <a href="https://x.com/grenlouis"><strong>X / @grenlouis</strong></a>
 </p>
 
-<p align="center">
-  <a href="https://x.com/grenlouis">Follow progress on X / @grenlouis</a> ·
-  <a href="https://getleon.ai">Website</a> ·
-  <a href="https://leonai.substack.com/subscribe">Newsletter</a> ·
-  <a href="http://roadmap.getleon.ai">Roadmap</a> ·
-  <a href="https://blog.getleon.ai/the-story-behind-leon/">Story</a>
-</p>
